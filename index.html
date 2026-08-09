@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testament-Assistent (Testprojekt)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --card: #ffffff;
+    --ink: #2b2620;
+    --muted: #6b6459;
+    --accent: #6b4f3b;
+    --accent-dark: #4f3a2a;
+    --border: #e2ddd2;
+    --danger-bg: #fdf2f0;
+    --danger-border: #e8bfb6;
+    --danger-ink: #8a3b2a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  .wrap {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  header.top {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  header.top h1 {
+    font-size: 1.7rem;
+    margin: 0 0 4px;
+    color: var(--accent-dark);
+  }
+  header.top p {
+    color: var(--muted);
+    margin: 0;
+    font-size: 0.95rem;
+  }
+  .disclaimer {
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
+    color: var(--danger-ink);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 0.88rem;
+    margin-bottom: 28px;
+  }
+  .disclaimer strong { display: block; margin-bottom: 4px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 30px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .progress {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 24px;
+  }
+  .progress .seg {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+  }
+  .progress .seg.active { background: var(--accent); }
+  .step { display: none; }
+  .step.active { display: block; }
+  .step h2 {
+    font-size: 1.2rem;
+    color: var(--accent-dark);
+    margin-top: 0;
+  }
+  .step .hint {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: -6px;
+    margin-bottom: 18px;
+  }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 14px 0 4px;
+  }
+  input[type="text"], input[type="date"], textarea, select {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    background: #fffdfa;
+    color: var(--ink);
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .row { display: flex; gap: 14px; }
+  .row > div { flex: 1; }
+  .repeat-block {
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 14px;
+    position: relative;
+    background: #fdfcfa;
+  }
+  .repeat-block .remove-btn {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .repeat-block .remove-btn:hover { color: var(--danger-ink); }
+  .add-btn {
+    margin-top: 12px;
+    background: none;
+    border: 1px solid var(--accent);
+    color: var(--accent-dark);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .add-btn:hover { background: #f1ece3; }
+  .nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 28px;
+  }
+  button.primary, button.secondary {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-family: inherit;
+    border: 1px solid transparent;
+  }
+  button.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  button.primary:hover { background: var(--accent-dark); }
+  button.secondary {
+    background: none;
+    border-color: var(--border);
+    color: var(--ink);
+  }
+  button.secondary:hover { background: #f1ece3; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .fieldset-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin-top: 20px;
+  }
+  #preview-text {
+    white-space: pre-wrap;
+    background: #fffdfa;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    font-family: "Iowan Old Style", Georgia, serif;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    min-height: 300px;
+  }
+  .preview-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+  footer.legalnote {
+    margin-top: 28px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .checkbox-row input { width: auto; }
+  .checkbox-row label { margin: 0; color: var(--ink); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>Testament-Assistent</h1>
+    <p>Ein Übungs- und Testprojekt — kein echtes Rechtsberatungsprodukt</p>
+  </header>
+
+  <div class="disclaimer">
+    <strong>Wichtiger Hinweis</strong>
+    Dies ist ein reines Testprojekt zu Demonstrationszwecken und ersetzt keine Rechtsberatung. Der erzeugte Text ist ein unverbindlicher Entwurf. Für ein rechtsgültiges eigenhändiges Testament in Deutschland muss der gesamte Text nach § 2247 BGB eigenhändig, d.h. von Hand, geschrieben und eigenhändig unterschrieben werden (Ort und Datum werden empfohlen). Ein ausgedrucktes oder maschinengeschriebenes Testament ist so nicht formgültig. Bei realen Anliegen wende dich bitte an einen Notar oder Fachanwalt für Erbrecht.
+  </div>
+
+  <div class="card">
+    <div class="progress">
+      <div class="seg active" data-seg="0"></div>
+      <div class="seg" data-seg="1"></div>
+      <div class="seg" data-seg="2"></div>
+      <div class="seg" data-seg="3"></div>
+      <div class="seg" data-seg="4"></div>
+      <div class="seg" data-seg="5"></div>
+    </div>
+
+    <!-- Step 0: Persönliche Angaben -->
+    <div class="step active" data-step="0">
+      <h2>1. Persönliche Angaben</h2>
+      <p class="hint">Angaben zur erblassenden Person (dir).</p>
+      <label for="fullname">Vollständiger Name</label>
+      <input type="text" id="fullname" placeholder="Vor- und Nachname">
+      <div class="row">
+        <div>
+          <label for="birthdate">Geburtsdatum</label>
+          <input type="date" id="birthdate">
+        </div>
+        <div>
+          <label for="birthplace">Geburtsort</label>
+          <input type="text" id="birthplace" placeholder="z.B. München">
+        </div>
+      </div>
+      <label for="address">Aktuelle Anschrift</label>
+      <input type="text" id="address" placeholder="Straße, PLZ, Ort">
+    </div>
+
+    <!-- Step 1: Familienstand -->
+    <div class="step" data-step="1">
+      <h2>2. Familienstand</h2>
+      <p class="hint">Hilft, den Kontext des Testaments einzuordnen (optional, aber empfohlen).</p>
+      <label for="maritalstatus">Familienstand</label>
+      <select id="maritalstatus">
+        <option value="ledig">ledig</option>
+        <option value="verheiratet">verheiratet</option>
+        <option value="verwitwet">verwitwet</option>
+        <option value="geschieden">geschieden</option>
+        <option value="in eingetragener Lebenspartnerschaft">in eingetragener Lebenspartnerschaft</option>
+      </select>
+      <label for="spousename">Name des Ehe-/Lebenspartners (falls zutreffend)</label>
+      <input type="text" id="spousename" placeholder="optional">
+      <label for="children">Kinder (Namen, durch Komma getrennt)</label>
+      <input type="text" id="children" placeholder="optional, z.B. Anna Muster, Ben Muster">
+    </div>
+
+    <!-- Step 2: Erbeinsetzung -->
+    <div class="step" data-step="2">
+      <h2>3. Erbeinsetzung</h2>
+      <p class="hint">Wer soll dein Vermögen (oder Anteile davon) erben?</p>
+      <div id="heirs-container"></div>
+      <button type="button" class="add-btn" id="add-heir">+ weitere erbende Person hinzufügen</button>
+    </div>
+
+    <!-- Step 3: Vermächtnisse -->
+    <div class="step" data-step="3">
+      <h2>4. Vermächtnisse (optional)</h2>
+      <p class="hint">Einzelne Gegenstände, die bestimmten Personen zugewendet werden sollen (unabhängig von der Erbquote).</p>
+      <div id="legacies-container"></div>
+      <button type="button" class="add-btn" id="add-legacy">+ weiteres Vermächtnis hinzufügen</button>
+    </div>
+
+    <!-- Step 4: Testamentsvollstrecker -->
+    <div class="step" data-step="4">
+      <h2>5. Testamentsvollstreckung (optional)</h2>
+      <p class="hint">Eine Person, die die Umsetzung deines letzten Willens überwacht.</p>
+      <div class="checkbox-row">
+        <input type="checkbox" id="has-executor">
+        <label for="has-executor">Testamentsvollstrecker/in benennen</label>
+      </div>
+      <div id="executor-fields" style="display:none;">
+        <label for="executor-name">Name</label>
+        <input type="text" id="executor-name" placeholder="Vor- und Nachname">
+        <label for="executor-address">Anschrift</label>
+        <input type="text" id="executor-address" placeholder="Straße, PLZ, Ort">
+      </div>
+    </div>
+
+    <!-- Step 5: Ort/Datum + Vorschau -->
+    <div class="step" data-step="5">
+      <h2>6. Ort, Datum &amp; Vorschau</h2>
+      <p class="hint">Diese Angaben stehen am Ende des Testaments, direkt vor der Unterschrift.</p>
+      <div class="row">
+        <div>
+          <label for="place-signed">Ort</label>
+          <input type="text" id="place-signed" placeholder="z.B. Berlin">
+        </div>
+        <div>
+          <label for="date-signed">Datum</label>
+          <input type="date" id="date-signed">
+        </div>
+      </div>
+
+      <div class="fieldset-title">Vorschau</div>
+      <div id="preview-text">Bitte fülle die vorherigen Schritte aus …</div>
+
+      <div class="preview-actions">
+        <button type="button" class="secondary" id="copy-btn">Text kopieren</button>
+        <button type="button" class="primary" id="pdf-btn">Als PDF herunterladen</button>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button type="button" class="secondary" id="prev-btn">Zurück</button>
+      <button type="button" class="primary" id="next-btn">Weiter</button>
+    </div>
+  </div>
+
+  <footer class="legalnote">
+    Testament-Assistent · Testprojekt · keine Rechtsberatung · erstellt am <span id="today"></span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  const steps = Array.from(document.querySelectorAll('.step'));
+  const segs = Array.from(document.querySelectorAll('.progress .seg'));
+  let current = 0;
+
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+
+  function showStep(i) {
+    steps.forEach((s, idx) => s.classList.toggle('active', idx === i));
+    segs.forEach((s, idx) => s.classList.toggle('active', idx <= i));
+    prevBtn.disabled = i === 0;
+    nextBtn.textContent = i === steps.length - 1 ? 'Text erzeugen' : 'Weiter';
+    current = i;
+    if (i === steps.length - 1) renderPreview();
+  }
+
+  prevBtn.addEventListener('click', () => { if (current > 0) showStep(current - 1); });
+  nextBtn.addEventListener('click', () => {
+    if (current < steps.length - 1) {
+      showStep(current + 1);
+    } else {
+      renderPreview();
+    }
+  });
+
+  // --- Repeating heir blocks ---
+  const heirsContainer = document.getElementById('heirs-container');
+  function addHeirBlock(prefillName = '', prefillRel = '', prefillShare = '') {
+    const block = document.createElement('div');
+    block.className = 'repeat-block heir-block';
+    block.innerHTML = `
+      <button type="button" class="remove-btn">Entfernen</button>
+      <label>Name der erbenden Person</label>
+      <input type="text" class="heir-name" placeholder="Vor- und Nachname" value="${prefillName}">
+      <div class="row">
+        <div>
+          <label>Beziehung zu dir</label>
+          <input type="text" class="heir-rel" placeholder="z.B. Ehefrau, Sohn, Freund" value="${prefillRel}">
+        </div>
+        <div>
+          <label>Erbanteil</label>
+          <input type="text" class="heir-share" placeholder="z.B. 1/2 oder 'gesamtes Vermögen'" value="${prefillShare}">
+        </div>
+      </div>
+    `;
+    block.querySelector('.remove-btn').addEventListener('click', () => block.remove());
+    heirsContainer.appendChild(block);
+  }
+  document.getElementById('add-heir').addEventListener('click', () => addHeirBlock());
+  addHeirBlock(); // start with one
+
+  // --- Repeating legacy blocks ---
+  const legaciesContainer = document.getElementById('legacies-container');
+  function addLegacyBlock() {
+    const block = document.createElement('div');
+    block.className = 'repeat-block legacy-block';
+    block.innerHTML = `
+      <button type="button" class="remove-btn">Entfernen</button>
+      <label>Empfänger/in</label>
+      <input type="text" class="legacy-recipient" placeholder="Vor- und Nachname">
+      <label>Gegenstand / Vermächtnis</label>
+      <input type="text" class="legacy-item" placeholder="z.B. mein Auto, meine Bücher, 5.000 €">
+    `;
+    block.querySelector('.remove-btn').addEventListener('click', () => block.remove());
+    legaciesContainer.appendChild(block);
+  }
+  document.getElementById('add-legacy').addEventListener('click', addLegacyBlock);
+
+  // --- Executor toggle ---
+  const hasExecutor = document.getElementById('has-executor');
+  const executorFields = document.getElementById('executor-fields');
+  hasExecutor.addEventListener('change', () => {
+    executorFields.style.display = hasExecutor.checked ? 'block' : 'none';
+  });
+
+  // --- Data collection ---
+  function formatDate(iso) {
+    if (!iso) return '[Datum]';
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
+  }
+
+  function collectData() {
+    const heirs = Array.from(document.querySelectorAll('.heir-block')).map(b => ({
+      name: b.querySelector('.heir-name').value.trim(),
+      rel: b.querySelector('.heir-rel').value.trim(),
+      share: b.querySelector('.heir-share').value.trim()
+    })).filter(h => h.name);
+
+    const legacies = Array.from(document.querySelectorAll('.legacy-block')).map(b => ({
+      recipient: b.querySelector('.legacy-recipient').value.trim(),
+      item: b.querySelector('.legacy-item').value.trim()
+    })).filter(l => l.recipient && l.item);
+
+    return {
+      fullname: document.getElementById('fullname').value.trim() || '[Name nicht angegeben]',
+      birthdate: formatDate(document.getElementById('birthdate').value),
+      birthplace: document.getElementById('birthplace').value.trim() || '[Geburtsort]',
+      address: document.getElementById('address').value.trim() || '[Anschrift]',
+      maritalstatus: document.getElementById('maritalstatus').value,
+      spousename: document.getElementById('spousename').value.trim(),
+      children: document.getElementById('children').value.trim(),
+      heirs,
+      legacies,
+      hasExecutor: hasExecutor.checked,
+      executorName: document.getElementById('executor-name').value.trim(),
+      executorAddress: document.getElementById('executor-address').value.trim(),
+      place: document.getElementById('place-signed').value.trim() || '[Ort]',
+      date: formatDate(document.getElementById('date-signed').value)
+    };
+  }
+
+  function generateText(d) {
+    let lines = [];
+    lines.push('TESTAMENT');
+    lines.push('');
+    lines.push(`Ich, ${d.fullname}, geboren am ${d.birthdate} in ${d.birthplace}, wohnhaft in ${d.address}, erkläre hiermit bei vollem Bewusstsein und in freier Entscheidung meinen letzten Willen wie folgt:`);
+    lines.push('');
+
+    if (d.maritalstatus || d.spousename || d.children) {
+      let famLine = `Familiäre Verhältnisse: Ich bin ${d.maritalstatus}.`;
+      if (d.spousename) famLine += ` Mein Ehe-/Lebenspartner ist ${d.spousename}.`;
+      if (d.children) famLine += ` Meine Kinder sind: ${d.children}.`;
+      lines.push(famLine);
+      lines.push('');
+    }
+
+    lines.push('§ 1 Erbeinsetzung');
+    if (d.heirs.length === 0) {
+      lines.push('[Es wurden noch keine Erben benannt.]');
+    } else {
+      d.heirs.forEach((h, i) => {
+        const relPart = h.rel ? ` (${h.rel})` : '';
+        const sharePart = h.share ? h.share : 'zu gleichen Teilen';
+        lines.push(`${i + 1}. Ich setze ${h.name}${relPart} als Erbin/Erben ein, mit einem Erbanteil von ${sharePart}.`);
+      });
+    }
+    lines.push('');
+
+    if (d.legacies.length > 0) {
+      lines.push('§ 2 Vermächtnisse');
+      d.legacies.forEach((l, i) => {
+        lines.push(`${i + 1}. ${l.recipient} erhält als Vermächtnis: ${l.item}.`);
+      });
+      lines.push('');
+    }
+
+    if (d.hasExecutor && d.executorName) {
+      lines.push('§ 3 Testamentsvollstreckung');
+      lines.push(`Ich ordne Testamentsvollstreckung an und benenne ${d.executorName}, wohnhaft in ${d.executorAddress || '[Anschrift]'}, zum Testamentsvollstrecker/zur Testamentsvollstreckerin.`);
+      lines.push('');
+    }
+
+    lines.push('§ 4 Schlussbestimmungen');
+    lines.push('Mit diesem Testament widerrufe ich alle früheren letztwilligen Verfügungen, soweit sie diesem Testament widersprechen.');
+    lines.push('');
+    lines.push(`${d.place}, den ${d.date}`);
+    lines.push('');
+    lines.push('_______________________________');
+    lines.push(`${d.fullname} (eigenhändige Unterschrift)`);
+    lines.push('');
+    lines.push('Hinweis: Zur Gültigkeit als eigenhändiges Testament (§ 2247 BGB) muss der gesamte vorstehende Text von Hand geschrieben und eigenhändig unterschrieben werden.');
+
+    return lines.join('\n');
+  }
+
+  function renderPreview() {
+    const data = collectData();
+    const text = generateText(data);
+    document.getElementById('preview-text').textContent = text;
+    window.__testamentText = text;
+  }
+
+  document.getElementById('copy-btn').addEventListener('click', async () => {
+    const text = window.__testamentText || document.getElementById('preview-text').textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      const btn = document.getElementById('copy-btn');
+      const original = btn.textContent;
+      btn.textContent = 'Kopiert ✓';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    } catch (e) {
+      alert('Kopieren nicht möglich. Bitte Text manuell markieren und kopieren.');
+    }
+  });
+
+  document.getElementById('pdf-btn').addEventListener('click', () => {
+    const text = window.__testamentText || document.getElementById('preview-text').textContent;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const marginLeft = 56;
+    const marginTop = 64;
+    const maxWidth = 483;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(11);
+    const lines = doc.splitTextToSize(text, maxWidth);
+    let y = marginTop;
+    const lineHeight = 15;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    lines.forEach(line => {
+      if (y > pageHeight - 56) {
+        doc.addPage();
+        y = marginTop;
+      }
+      doc.text(line, marginLeft, y);
+      y += lineHeight;
+    });
+    doc.save('testament-entwurf.pdf');
+  });
+
+  document.getElementById('today').textContent = new Date().toLocaleDateString('de-DE');
+
+  showStep(0);
+})();
+</script>
+</body>
+</html>
